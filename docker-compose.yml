@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mqtt_broker
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+    networks:
+      - chat_network
+    environment:
+      - TZ=UTC
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongo_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - chat_network
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+
+  backend:
+    build: ./backend
+    container_name: chat_backend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mosquitto
+      - mongodb
+    environment:
+      - NODE_ENV=development
+      - MQTT_BROKER_URL=mqtt://mosquitto:1883
+      - MONGO_URL=mongodb://admin:password@mongodb:27017
+      - PORT=3000
+    networks:
+      - chat_network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build: ./frontend
+    container_name: chat_frontend
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_BACKEND_URL=http://localhost:3000
+      - REACT_APP_MQTT_BROKER_URL=ws://localhost:9001
+    networks:
+      - chat_network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  mongodb_data:
+  mosquitto_data:
+  mosquitto_logs:
+
+networks:
+  chat_network:
+    driver: bridge
