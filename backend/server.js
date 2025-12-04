@@ -39,8 +39,57 @@ const userSchema = new mongoose.Schema({
 
 userSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
+const roomSchema = new mongoose.Schema({
+  name: { 
+    type: String, 
+    unique: true, 
+    required: true, 
+    lowercase: true,
+    index: true 
+  },
+  createdAt: { 
+    type: Date, 
+    default: Date.now,
+    index: true
+  },
+  createdBy: String,
+  description: { 
+    type: String, 
+    default: "" 
+  },
+  lastMessageAt: { 
+    type: Date, 
+    default: Date.now,
+    index: true
+  },
+  lastMessagePreview: { 
+    type: String, 
+    default: "No messages yet" 
+  },
+  lastMessageUser: String,
+  userCount: { 
+    type: Number, 
+    default: 0,
+    index: true
+  },
+  isPrivate: { 
+    type: Boolean, 
+    default: false 
+  },
+  tags: [String],
+  messageCount: { 
+    type: Number, 
+    default: 0 
+  }
+});
+
+roomSchema.index({ createdAt: -1 });
+roomSchema.index({ lastMessageAt: -1 });
+roomSchema.index({ userCount: -1 });
+
 const Message = mongoose.model('Message', messageSchema);
 const User = mongoose.model('User', userSchema);
+const Room = mongoose.model('Room', roomSchema);
 
 // MQTT Connection
 const mqttBroker = process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883';
@@ -87,7 +136,57 @@ mqttClient.on('message', async (topic, message) => {
 
 // API Routes
 
-// Join a room
+// List all rooms
+app.get('/api/rooms', async (req, res) => {
+  try {
+    const { sort = 'lastMessageAt', order = 'desc', limit = 50 } = req.query;
+    
+    const sortObj = {};
+    sortObj[sort] = order === 'desc' ? -1 : 1;
+    
+    const rooms = await Room.find({})
+      .sort(sortObj)
+      .limit(parseInt(limit))
+      .select('name userCount lastMessageAt lastMessagePreview createdAt messageCount')
+      .exec();
+
+    res.json({ 
+      rooms,
+      totalRooms: await Room.countDocuments({})
+    });
+  } catch (error) {
+    console.error('Error fetching rooms:', error);
+    res.status(500).json({ error: 'Failed to fetch rooms' });
+  }
+});
+
+// Get room details
+app.get('/api/rooms/:roomName/details', async (req, res) => {
+  try {
+    const { roomName } = req.params;
+    
+    const room = await Room.findOne({ name: roomName.toLowerCase() });
+    
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    const activeUsers = await User.find({ roomName: roomName.toLowerCase() })
+      .select('username joinedAt')
+      .exec();
+
+    res.json({
+      room,
+      activeUsers,
+      activeUserCount: activeUsers.length
+    });
+  } catch (error) {
+    console.error('Error fetching room details:', error);
+    res.status(500).json({ error: 'Failed to fetch room details' });
+  }
+});
+
+// Join a room (auto-create if doesn't exist)
 app.post('/api/rooms/:roomName/join', async (req, res) => {
   try {
     const { roomName } = req.params;
@@ -97,13 +196,33 @@ app.post('/api/rooms/:roomName/join', async (req, res) => {
       return res.status(400).json({ error: 'Username and room name required' });
     }
 
+    const roomNameLower = roomName.toLowerCase();
+
+    // Create room if it doesn't exist
+    let room = await Room.findOne({ name: roomNameLower });
+    if (!room) {
+      room = new Room({
+        name: roomNameLower,
+        createdBy: username,
+        createdAt: new Date()
+      });
+      await room.save();
+      console.log(`✓ Created new room: ${roomNameLower}`);
+    }
+
     // Add user to room
     const user = new User({
-      roomName,
+      roomName: roomNameLower,
       username,
       joinedAt: new Date()
     });
     await user.save();
+
+    // Increment room user count
+    await Room.updateOne(
+      { name: roomNameLower },
+      { $inc: { userCount: 1 } }
+    );
 
     // Publish user join event to MQTT
     const joinEvent = {
@@ -111,9 +230,9 @@ app.post('/api/rooms/:roomName/join', async (req, res) => {
       timestamp: new Date().toISOString(),
       action: 'join'
     };
-    mqttClient.publish(`chat/${roomName}/users/join`, JSON.stringify(joinEvent));
+    mqttClient.publish(`chat/${roomNameLower}/users/join`, JSON.stringify(joinEvent));
 
-    res.json({ success: true, message: 'Joined room', userId: user._id });
+    res.json({ success: true, message: 'Joined room', userId: user._id, room });
   } catch (error) {
     console.error('Error joining room:', error);
     res.status(500).json({ error: 'Failed to join room' });
@@ -126,8 +245,20 @@ app.post('/api/rooms/:roomName/leave', async (req, res) => {
     const { roomName } = req.params;
     const { username } = req.body;
 
+    const roomNameLower = roomName.toLowerCase();
+
     // Remove user from room
-    await User.deleteOne({ roomName, username });
+    await User.deleteOne({ roomName: roomNameLower, username });
+
+    // Decrement room user count
+    const room = await Room.findOne({ name: roomNameLower });
+    if (room) {
+      const newCount = Math.max(0, room.userCount - 1);
+      await Room.updateOne(
+        { name: roomNameLower },
+        { userCount: newCount }
+      );
+    }
 
     // Publish user leave event to MQTT
     const leaveEvent = {
@@ -135,7 +266,7 @@ app.post('/api/rooms/:roomName/leave', async (req, res) => {
       timestamp: new Date().toISOString(),
       action: 'leave'
     };
-    mqttClient.publish(`chat/${roomName}/users/leave`, JSON.stringify(leaveEvent));
+    mqttClient.publish(`chat/${roomNameLower}/users/leave`, JSON.stringify(leaveEvent));
 
     res.json({ success: true, message: 'Left room' });
   } catch (error) {
@@ -154,16 +285,31 @@ app.post('/api/rooms/:roomName/messages', async (req, res) => {
       return res.status(400).json({ error: 'Username, content, and room name required' });
     }
 
+    const roomNameLower = roomName.toLowerCase();
     const timestamp = new Date();
 
     // Save message to MongoDB
     const newMessage = new Message({
-      roomName,
+      roomName: roomNameLower,
       username,
       content,
       timestamp
     });
     await newMessage.save();
+
+    // Update room metadata
+    const messagePreview = content.length > 50 ? content.substring(0, 50) + '...' : content;
+    await Room.updateOne(
+      { name: roomNameLower },
+      {
+        $set: {
+          lastMessageAt: timestamp,
+          lastMessagePreview: messagePreview,
+          lastMessageUser: username
+        },
+        $inc: { messageCount: 1 }
+      }
+    );
 
     // Publish message to MQTT
     const messagePayload = {
@@ -171,7 +317,7 @@ app.post('/api/rooms/:roomName/messages', async (req, res) => {
       content,
       timestamp: timestamp.toISOString()
     };
-    mqttClient.publish(`chat/${roomName}/messages`, JSON.stringify(messagePayload));
+    mqttClient.publish(`chat/${roomNameLower}/messages`, JSON.stringify(messagePayload));
 
     res.json({ success: true, message: 'Message sent' });
   } catch (error) {
