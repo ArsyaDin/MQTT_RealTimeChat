@@ -50,6 +50,8 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
   useEffect(() => {
     if (!chatHistoryLoaded) return;
 
+    // Use the same hostname as the current page for MQTT connection
+    // This ensures mobile devices can connect to the broker using the machine's IP
     const mqttBrokerUrl = `ws://${window.location.hostname}:9001`;
 
     const client = mqtt.connect(mqttBrokerUrl, {
@@ -60,7 +62,7 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
     });
 
     client.on('connect', () => {
-      console.log('Connected to MQTT broker');
+      console.log('Connected to MQTT broker at', mqttBrokerUrl);
       client.subscribe(`chat/${roomName}/messages`, (err) => {
         if (err) console.error('Failed to subscribe to messages:', err);
       });
