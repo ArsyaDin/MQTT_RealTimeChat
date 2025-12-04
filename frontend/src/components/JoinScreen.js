@@ -72,10 +72,6 @@ const JoinScreen = ({ onJoin }) => {
           </div>
           <RoomBrowser
             onSelectRoom={handleSelectRoom}
-            onCreateRoom={() => {
-              setShowBrowser(false);
-              setRoomName('');
-            }}
           />
         </div>
       </div>

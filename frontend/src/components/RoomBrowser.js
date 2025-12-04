@@ -8,6 +8,8 @@ const RoomBrowser = ({ onSelectRoom, onCreateRoom }) => {
   const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState('lastMessageAt');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
 
   useEffect(() => {
     fetchRooms();
@@ -30,6 +32,17 @@ const RoomBrowser = ({ onSelectRoom, onCreateRoom }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateRoom = () => {
+    if (!newRoomName.trim()) {
+      alert('Please enter a room name');
+      return;
+    }
+    setShowCreateModal(false);
+    setNewRoomName('');
+    // Trigger room creation by selecting the new room
+    onSelectRoom(newRoomName.trim());
   };
 
   const filteredRooms = rooms.filter(room =>
@@ -55,10 +68,52 @@ const RoomBrowser = ({ onSelectRoom, onCreateRoom }) => {
     <div className="room-browser">
       <div className="browser-header">
         <h2>Available Rooms</h2>
-        <button className="create-room-btn" onClick={onCreateRoom}>
+        <button 
+          className="create-room-btn" 
+          onClick={() => setShowCreateModal(true)}
+        >
           + Create Room
         </button>
       </div>
+
+      {showCreateModal && (
+        <div className="modal-overlay">
+          <div className="create-room-modal">
+            <h3>Create New Room</h3>
+            <input
+              type="text"
+              placeholder="Enter room name..."
+              value={newRoomName}
+              onChange={(e) => setNewRoomName(e.target.value)}
+              maxLength="30"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleCreateRoom();
+                }
+              }}
+              autoFocus
+              className="room-name-input"
+            />
+            <div className="modal-buttons">
+              <button 
+                onClick={handleCreateRoom}
+                className="create-btn"
+              >
+                Create
+              </button>
+              <button 
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setNewRoomName('');
+                }}
+                className="cancel-btn"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="browser-controls">
         <input
@@ -88,7 +143,6 @@ const RoomBrowser = ({ onSelectRoom, onCreateRoom }) => {
         ) : filteredRooms.length === 0 ? (
           <div className="empty">
             <p>No rooms found. Create one to get started!</p>
-            <button onClick={onCreateRoom}>Create Room</button>
           </div>
         ) : (
           filteredRooms.map((room) => (
