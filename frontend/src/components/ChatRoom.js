@@ -27,10 +27,11 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
     const fetchChatHistory = async () => {
       try {
         setLoading(true);
-        const messagesRes = await axios.get(`/api/rooms/${roomName}/messages`);
+        // Use window.location.origin for backend API calls (respects current page origin)
+        const messagesRes = await axios.get(`${window.location.origin}/api/rooms/${roomName}/messages`);
         setMessages(messagesRes.data.messages || []);
 
-        const usersRes = await axios.get(`/api/rooms/${roomName}/users`);
+        const usersRes = await axios.get(`${window.location.origin}/api/rooms/${roomName}/users`);
         setUsers(usersRes.data.users || []);
 
         setChatHistoryLoaded(true);
@@ -50,27 +51,37 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
   useEffect(() => {
     if (!chatHistoryLoaded) return;
 
-    // Use the same hostname as the current page for MQTT connection
-    // This ensures mobile devices can connect to the broker using the machine's IP
-    const mqttBrokerUrl = `ws://${window.location.hostname}:9001`;
+    // Construct MQTT WebSocket URL properly
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const mqttBrokerUrl = `${protocol}://${window.location.hostname}:9001`;
+
+    console.log('🔌 Attempting MQTT connection');
+    console.log('   URL:', mqttBrokerUrl);
+    console.log('   Hostname:', window.location.hostname);
+    console.log('   Port: 9001');
+    console.log('   Protocol:', protocol);
 
     const client = mqtt.connect(mqttBrokerUrl, {
-      clientId: `mqtt_${Date.now()}`,
+      clientId: `mqtt_${username}_${Date.now()}`,
       clean: true,
       reconnectPeriod: 1000,
-      connectTimeout: 30000
+      connectTimeout: 30000,
+      keepalive: 60
     });
 
     client.on('connect', () => {
-      console.log('Connected to MQTT broker at', mqttBrokerUrl);
+      console.log('✅ MQTT Connected successfully');
       client.subscribe(`chat/${roomName}/messages`, (err) => {
-        if (err) console.error('Failed to subscribe to messages:', err);
+        if (err) console.error('Subscribe error:', err);
+        else console.log('✅ Subscribed to messages');
       });
       client.subscribe(`chat/${roomName}/users/join`, (err) => {
-        if (err) console.error('Failed to subscribe to join events:', err);
+        if (err) console.error('Subscribe error:', err);
+        else console.log('✅ Subscribed to join events');
       });
       client.subscribe(`chat/${roomName}/users/leave`, (err) => {
-        if (err) console.error('Failed to subscribe to leave events:', err);
+        if (err) console.error('Subscribe error:', err);
+        else console.log('✅ Subscribed to leave events');
       });
     });
 
@@ -91,12 +102,18 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
     });
 
     client.on('error', (err) => {
-      console.error('MQTT Error:', err);
-      setError('Connection error');
+      console.error('❌ MQTT Error:', err);
+      console.error('   Error code:', err.code);
+      console.error('   Error message:', err.message);
+      setError('Cannot connect to chat broker - Check network connection');
+    });
+
+    client.on('offline', () => {
+      console.warn('⚠️ MQTT offline - reconnecting...');
     });
 
     client.on('close', () => {
-      console.log('MQTT connection closed');
+      console.log('🔌 MQTT connection closed');
     });
 
     mqttClientRef.current = client;
@@ -107,7 +124,7 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
         mqttClientRef.current.end();
       }
     };
-  }, [roomName, chatHistoryLoaded]);
+  }, [roomName, username, chatHistoryLoaded]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -115,7 +132,7 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
     if (!messageInput.trim()) return;
 
     try {
-      await axios.post(`/api/rooms/${roomName}/messages`, {
+      await axios.post(`${window.location.origin}/api/rooms/${roomName}/messages`, {
         username,
         content: messageInput.trim()
       });
@@ -128,7 +145,7 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
 
   const handleLeave = async () => {
     try {
-      await axios.post(`/api/rooms/${roomName}/leave`, { username });
+      await axios.post(`${window.location.origin}/api/rooms/${roomName}/leave`, { username });
       if (mqttClientRef.current) {
         mqttClientRef.current.end();
       }
@@ -140,7 +157,7 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
 
   const handleWindowClose = async () => {
     try {
-      await axios.post(`/api/rooms/${roomName}/leave`, { username });
+      await axios.post(`${window.location.origin}/api/rooms/${roomName}/leave`, { username });
       if (mqttClientRef.current) {
         mqttClientRef.current.end();
       }
