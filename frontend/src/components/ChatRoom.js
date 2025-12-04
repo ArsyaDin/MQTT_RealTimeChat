@@ -9,6 +9,7 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
   const [messageInput, setMessageInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [chatHistoryLoaded, setChatHistoryLoaded] = useState(false);
   const mqttClientRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -21,91 +22,90 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Initialize chat room
+  // Fetch chat history on room join
   useEffect(() => {
-    const initializeRoom = async () => {
+    const fetchChatHistory = async () => {
       try {
-        // Fetch last 100 messages
+        setLoading(true);
         const messagesRes = await axios.get(`/api/rooms/${roomName}/messages`);
-        setMessages(messagesRes.data.messages);
+        setMessages(messagesRes.data.messages || []);
 
-        // Fetch active users
         const usersRes = await axios.get(`/api/rooms/${roomName}/users`);
-        setUsers(usersRes.data.users);
+        setUsers(usersRes.data.users || []);
 
-        // Connect to MQTT
-        const backendUrl = window.location.origin;
-        const mqttBrokerUrl = `ws://${window.location.hostname}:9001`;
-
-        const client = mqtt.connect(mqttBrokerUrl, {
-          clientId: `client_${username}_${Date.now()}`,
-          clean: true,
-          reconnectPeriod: 5000
-        });
-
-        client.on('connect', () => {
-          console.log('Connected to MQTT');
-          // Subscribe to room topics
-          client.subscribe(`chat/${roomName}/messages`);
-          client.subscribe(`chat/${roomName}/users/join`);
-          client.subscribe(`chat/${roomName}/users/leave`);
-        });
-
-        client.on('message', (topic, payload) => {
-          try {
-            const message = JSON.parse(payload.toString());
-
-            if (topic === `chat/${roomName}/messages`) {
-              // Add new message
-              setMessages((prev) => [...prev, {
-                _id: Date.now(),
-                username: message.username,
-                content: message.content,
-                timestamp: new Date(message.timestamp)
-              }]);
-            } else if (topic === `chat/${roomName}/users/join`) {
-              // Refresh users list
-              fetchUsers();
-            } else if (topic === `chat/${roomName}/users/leave`) {
-              // Refresh users list
-              fetchUsers();
-            }
-          } catch (err) {
-            console.error('Error processing message:', err);
-          }
-        });
-
-        client.on('error', (err) => {
-          console.error('MQTT error:', err);
-          setError('Connection error. Trying to reconnect...');
-        });
-
-        mqttClientRef.current = client;
-        setLoading(false);
+        setChatHistoryLoaded(true);
       } catch (err) {
-        setError('Failed to load room');
+        console.error('Error fetching chat history:', err);
+        setError('Failed to load chat history');
+        setChatHistoryLoaded(true); // Allow MQTT to connect even if history fails
+      } finally {
         setLoading(false);
       }
     };
 
-    initializeRoom();
+    fetchChatHistory();
+  }, [roomName]);
 
-    // Cleanup on component unmount
+  // Establish MQTT connection after chat history loads
+  useEffect(() => {
+    if (!chatHistoryLoaded) return;
+
+    const mqttBrokerUrl = `ws://${window.location.hostname}:9001`;
+
+    const client = mqtt.connect(mqttBrokerUrl, {
+      clientId: `mqtt_${Date.now()}`,
+      clean: true,
+      reconnectPeriod: 1000,
+      connectTimeout: 30000
+    });
+
+    client.on('connect', () => {
+      console.log('Connected to MQTT broker');
+      client.subscribe(`chat/${roomName}/messages`, (err) => {
+        if (err) console.error('Failed to subscribe to messages:', err);
+      });
+      client.subscribe(`chat/${roomName}/users/join`, (err) => {
+        if (err) console.error('Failed to subscribe to join events:', err);
+      });
+      client.subscribe(`chat/${roomName}/users/leave`, (err) => {
+        if (err) console.error('Failed to subscribe to leave events:', err);
+      });
+    });
+
+    client.on('message', async (topic, payload) => {
+      try {
+        const data = JSON.parse(payload.toString());
+
+        if (topic === `chat/${roomName}/messages`) {
+          setMessages((prev) => [...prev, data]);
+        } else if (topic === `chat/${roomName}/users/join`) {
+          setUsers((prev) => [...new Set([...prev, data.username])]);
+        } else if (topic === `chat/${roomName}/users/leave`) {
+          setUsers((prev) => prev.filter((u) => u !== data.username));
+        }
+      } catch (err) {
+        console.error('Error processing message:', err);
+      }
+    });
+
+    client.on('error', (err) => {
+      console.error('MQTT Error:', err);
+      setError('Connection error');
+    });
+
+    client.on('close', () => {
+      console.log('MQTT connection closed');
+    });
+
+    mqttClientRef.current = client;
+
+    // Cleanup
     return () => {
       if (mqttClientRef.current) {
         mqttClientRef.current.end();
       }
     };
-  }, [roomName, username]);
-
-  const fetchUsers = async () => {
-    try {
-      const res = await axios.get(`/api/rooms/${roomName}/users`);
-      setUsers(res.data.users);
-    } catch (err) {
-      console.error('Error fetching users:', err);
-    }
-  };
+  }, [roomName, chatHistoryLoaded]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -119,6 +119,7 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
       });
       setMessageInput('');
     } catch (err) {
+      console.error('Error sending message:', err);
       setError('Failed to send message');
     }
   };

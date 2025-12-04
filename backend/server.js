@@ -145,7 +145,7 @@ app.post('/api/rooms/:roomName/leave', async (req, res) => {
 });
 
 // Send a message
-app.post('/api/rooms/:roomName/messages', (req, res) => {
+app.post('/api/rooms/:roomName/messages', async (req, res) => {
   try {
     const { roomName } = req.params;
     const { username, content } = req.body;
@@ -154,11 +154,22 @@ app.post('/api/rooms/:roomName/messages', (req, res) => {
       return res.status(400).json({ error: 'Username, content, and room name required' });
     }
 
+    const timestamp = new Date();
+
+    // Save message to MongoDB
+    const newMessage = new Message({
+      roomName,
+      username,
+      content,
+      timestamp
+    });
+    await newMessage.save();
+
     // Publish message to MQTT
     const messagePayload = {
       username,
       content,
-      timestamp: new Date().toISOString()
+      timestamp: timestamp.toISOString()
     };
     mqttClient.publish(`chat/${roomName}/messages`, JSON.stringify(messagePayload));
 
