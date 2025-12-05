@@ -330,20 +330,6 @@ Used for:
 - Shows Join Screen, requires username entry
 - User cannot accidentally impersonate another tab's user
 
-### TTL & Heartbeat
-
-**User Document Expiry** (`expiresAt` field):
-- Set to 30 minutes in the future when user joins
-- MongoDB TTL index automatically removes expired user documents
-
-**Heartbeat** (Client-side periodic refresh):
-- Frontend heartbeat runs every 4 minutes (while user is in ChatRoom)
-- Calls `POST /api/rooms/:roomName/join` with current username
-- Backend updates `expiresAt` to 30 minutes into the future
-- Keeps user active if tab remains open
-
-**Result**: If user closes tab and reopens later, they start fresh (new join). If user stays in app, they remain in room across refreshes and MQTT reconnects.
-
 ## Docker Container Orchestration
 
 ### docker-compose.yml
@@ -397,67 +383,6 @@ Services:
 - MQTT broker clustering
 - Redis caching layer
 - Message queue (RabbitMQ/Kafka) for backend communication
-
-## Performance Characteristics
-
-### Latency
-- Message sending: 50-200ms (typical)
-- UI update: <100ms
-- History fetch: <500ms
-
-### Storage
-- Per message: ~200 bytes
-- 100 messages per room: ~20KB
-- With 50 rooms × 100 messages: ~1MB
-
-### Network Bandwidth
-- Typical user: 10-50 KB/min (messages + presence)
-- With 50 users: 500 KB - 2.5 MB/min
-
-## Development Workflow
-
-1. **Edit code** in `backend/` or `frontend/`
-2. **Containers auto-reload** (volumes mounted)
-3. **Check logs** with `docker-compose logs`
-4. **Test in browser** at `localhost:3001`
-
-## Monitoring & Debugging
-
-### Logs
-```bash
-docker-compose logs backend      # Backend logs
-docker-compose logs frontend     # Frontend logs
-docker-compose logs mosquitto    # MQTT logs
-docker-compose logs mongodb      # Database logs
-```
-
-### Database Inspection
-```bash
-# Connect to MongoDB
-docker exec -it mongo_db mongo -u admin -p password
-use admin
-db.messages.find()
-db.users.find()
-```
-
-### MQTT Topic Inspection
-```bash
-# Subscribe to all topics
-mosquitto_sub -h localhost -t 'chat/#' -v
-```
-
-## Deployment
-
-For production deployment:
-
-1. Use docker-compose with production configuration
-2. Set up reverse proxy (Nginx) for SSL/TLS
-3. Use environment-specific .env files
-4. Configure MongoDB authentication properly
-5. Set up monitoring (Prometheus, Grafana)
-6. Implement proper logging (ELK stack)
-7. Regular database backups
-8. Container image registry (DockerHub, ECR)
 
 ## Future Enhancements
 

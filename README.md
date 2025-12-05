@@ -43,27 +43,6 @@ The system consists of 4 main services:
    - Backend API: http://localhost:3000
    - MQTT Broker: localhost:1883 (or ws://localhost:9001 for WebSocket)
 
-## Local Development (without Docker)
-
-### Backend Setup
-
-```bash
-cd backend
-npm install
-export MONGO_URL=mongodb://admin:password@localhost:27017
-export MQTT_BROKER_URL=mqtt://localhost:1883
-npm run dev
-```
-
-### Frontend Setup
-
-```bash
-cd frontend
-npm install
-REACT_APP_BACKEND_URL=http://localhost:3000
-REACT_APP_MQTT_BROKER_URL=ws://localhost:9001
-npm start
-```
 
 ## Technology Stack
 
@@ -175,7 +154,4 @@ To access the chat from other computers on the same network:
 ## License
 
 MIT License - feel free to use this project for your own purposes.
-
-## Support
-
-For issues or questions, please create an issue or contact the project maintainer.
+.

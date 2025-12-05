@@ -7,31 +7,9 @@ Before you begin, make sure you have the following installed:
 - **Docker** (version 20.10+)
 - **Docker Compose** (version 1.29+)
 
-If you don't have Docker installed, download from: https://www.docker.com/products/docker-desktop
-
 ## Installation & Quick Start
 
-### Option 1: Using Setup Script (Recommended)
-
-#### On Linux/Mac:
-```bash
-cd /home/athonk/FinalProject
-bash setup.sh
-```
-
-#### On Windows:
-```bash
-cd C:\Users\YourUsername\FinalProject
-setup.bat
-```
-
-The script will:
-1. Check for Docker installation
-2. Create environment files
-3. Build all containers
-4. Start all services
-
-### Option 2: Manual Docker Compose
+### Manual Docker Compose
 
 ```bash
 cd /home/athonk/FinalProject

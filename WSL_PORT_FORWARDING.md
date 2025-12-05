@@ -1,35 +1,6 @@
 # WSL Docker Port Forwarding Guide
 
-## Problem
-When running Docker in WSL, the containers are on a virtual network. Your Windows IP (like 10.200.51.194) cannot directly reach the WSL containers.
-
-## Solution
-Port forward from Windows to WSL so external devices can connect.
-
-## Method 1: Automatic Setup (Recommended)
-
-### Step 1: Get WSL IP Address
-```bash
-# From WSL terminal
-hostname -I
-```
-Example output: `172.26.231.60 172.17.0.1 172.18.0.1`
-Use the first IP: `172.26.231.60`
-
-### Step 2: Run PowerShell Script as Administrator
-
-On Windows (PowerShell as Administrator):
-```powershell
-cd C:\Users\YourUsername\path\to\FinalProject
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-.\setup-port-forwarding.ps1
-```
-
-The script will automatically set up forwarding for ports: 3001, 3000, 9001, 1883
-
----
-
-## Method 2: Manual Setup (If Script Doesn't Work)
+## Setup
 
 ### Step 1: Open PowerShell as Administrator
 
@@ -53,6 +24,9 @@ netsh interface portproxy add v4tov4 listenport=9001 listenaddress=0.0.0.0 conne
 
 # MQTT TCP (Port 1883)
 netsh interface portproxy add v4tov4 listenport=1883 listenaddress=0.0.0.0 connectport=1883 connectaddress=172.26.231.60
+
+# MongoDB (Port 27017)
+netsh interface portproxy add v4tov4 listenport=27017 listenaddress=0.0.0.0 connectport=27017 connectaddress=172.26.231.60
 ```
 
 ### Step 4: Verify Rules
