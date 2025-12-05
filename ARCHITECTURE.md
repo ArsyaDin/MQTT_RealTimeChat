@@ -162,68 +162,68 @@ chat/
 ### 1. User Joins Room
 
 ```
-Browser                Backend              MQTT              MongoDB
-  │                      │                  │                   │
-  ├─ POST /join ────────>│                  │                   │
-  │                      ├─ Find/Create room ──────────────────>│
-  │                      ├─ Create/Update user (idempotent) ──>│
-  │                      │ (if refresh: refresh TTL only) (no  │
-  │                      │  userCount increment)                 │
-  │                      ├─ Increment userCount ───────────────>│
-  │                      │ (only if new user)                   │
-  │                      ├─ Publish join event ──>│             │
-  │                      │                  ├─ Broadcast ──────>│
-  │                      │                  │ (other clients)   │
-  │<─ 200 OK + room ─────┤                  │                   │
-  │ (store to sessionStorage)               │                   │
-  │                      │                  │                   │
-  ├─ Connect MQTT WS ───────────────────────────────────────────>│
-  │ (ws://host:9001)     │                  │                   │
-  │                      │                  ├─ MQTT Connected   │
-  ├─ Subscribe topics ──────────────────────────────────────────>│
-  │ chat/:room/messages  │                  ├─ Subscribed       │
-  │ chat/:room/users/#   │                  │                   │
+Browser                Backend                  MQTT              MongoDB
+  │                      │                        │                   │
+  ├─ POST /join ────────>│                        │                   │
+  │                      ├─ Find/Create room ────────────────────────>│
+  │                      ├─ Create/Update user (idempotent) ─────────>│
+  │                      │ (if refresh: refresh TTL only) (no         │
+  │                      │  userCount increment)                      │
+  │                      ├─ Increment userCount ─────────────────────>│
+  │                      │ (only if new user)                         │
+  │                      ├─ Publish join event ──>│                   │
+  │                      │                        ├─ Broadcast ──────>│
+  │                      │                        │ (other clients)   │
+  │<─ 200 OK + room ─────┤                        │                   │
+  │ (store to sessionStorage)                     │                   │
+  │                      │                        │                   │
+  ├─ Connect MQTT WS ───────────────────────────────────────────>     │
+  │ (ws://host:9001)     │                        │                   │
+  │                      │                        ├─ MQTT Connected   │
+  ├─ Subscribe topics ───────────────────────────────────────────────>│
+  │ chat/:room/messages  │                        ├─ Subscribed       │
+  │ chat/:room/users/#   │                        │                   │
 ```
 
 ### 2. Send Message
 
 ```
-Browser                Backend              MQTT              MongoDB
-  │                      │                  │                   │
-  ├─ POST /messages ────>│                  │                   │
-  │ (username, content)  │                  │                   │
-  │                      ├─ Save message ──────────────────────>│
-  │                      │ (messages collection)                │
-  │                      ├─ Update room metadata ───────────────>│
-  │                      │ (lastMessageAt, lastMessagePreview,  │
-  │                      │  lastMessageUser, messageCount)      │
-  │                      ├─ Publish message ──>│                 │
-  │                      │                  ├─ Broadcast ──────>│
-  │                      │                  │ (all subscribers) │
-  │<─ 200 OK ────────────┤                  │                   │
-  │                      │                  ├─ Message ────────>│
-  │                      │                  │ (self + others)   │
-  │ ← Update UI (via MQTT message received) │                   │
+Browser                Backend                MQTT              MongoDB
+  │                      │                     │                   │
+  ├─ POST /messages ────>│                     │                   │
+  │ (username, content)  │                     │                   │
+  │                      ├─ Save message ─────────────────────────>│
+  │                      │ (messages collection)                   │
+  │                      ├─ Update room metadata ─────────────────>│
+  │                      │ (lastMessageAt, lastMessagePreview,     │
+  │                      │  lastMessageUser, messageCount)         │
+  │                      ├─ Publish message ──>│                   │
+  │                      │                     ├─ Broadcast ──────>│
+  │                      │                     │ (all subscribers) │
+  │<─ 200 OK ────────────┤                     │                   │
+  │                      │                     ├─ Message ────────>│
+  │                      │                     │ (self + others)   │
+  │ ← Update UI (via MQTT message received)    │                   │
 ```
 
-### 3. Receive Messages (Real-time via MQTT)
+### 3. Receive Messages
 
 ```
 All Connected Clients   Backend         MQTT Broker          MongoDB
-        │                  │                  │                   │
-        │                  ├─ Subscribe ─────>│                   │
-        │                  │ chat/:room/msg   │                   │
-        │                  │                  │                   │
+        │                  │                  │                    │
+        │                  ├─ Subscribe ─────>│                    │
+        │                  │ chat/:room/msg   │                    │
+        │                  │                  │                    │
         │                  │                  │ Publish ──────────>│ (already stored)
-        │                  │<─ Message ───────│                   │
-        │<─ Message ─────────────────────────────────────────────>│
-        │ (via MQTT WS)    │                  │                   │
-        ├─ Update state   │                  │                   │
-        ├─ Re-render UI   │                  │                   │
-        └─ Scroll to bottom                  │                   │
+        │                  │<─ Message ───────│                    │
+        │<─ Message ─────────────────────────────────────────────> │
+        │ (via MQTT WS)    │                  │                    │
+        ├─ Update state    │                  │                    │
+        ├─ Re-render UI    │                  │                    │
+        └─ Scroll to bottom                   │                    │
 ```
 
-### 4. Room Browsing (Discovery)
+### 4. Room Browsing
 
 ```
 Browser                Backend              MongoDB
@@ -239,72 +239,23 @@ Browser                Backend              MongoDB
   │  createdAt, etc.)    │                   │
 ```
 
-### 5. Session Persistence & Refresh (Per-Tab)
-
-```
-Tab 1 (User: Alice)          sessionStorage         Backend          MongoDB
-  │                               │                    │                │
-  ├─ Join as "Alice" ─────────────────────────────────>│                │
-  │ → Stores: {                  │                    ├─ Create user ──>│
-  │     username: "Alice",       │                    │                │
-  │     roomName: "general"  ────────────────────────>│  (joins room)  │
-  │   }                          │                    │                │
-  │                              │                    │                │
-  ├─ Refresh page               │                    │                │
-  │ ↓ (Page reload, same tab)  │                    │                │
-  │                              │                    │                │
-  ├─ Read sessionStorage ────────>│ {Alice, general}  │                │
-  │                              │                    │                │
-  ├─ Call POST /join ──────────────────────────────────────────────────>│
-  │   (with stored session)      │                    ├─ Find user ────>│
-  │                              │                    ├─ Refresh TTL ──>│
-  │                              │                    │ (no duplicate)  │
-  │<─ 200 OK + room ─────────────────────────────────┤                │
-  │                              │                    │                │
-  └─ MQTT reconnect & resubscribe │                    │                │
-
-New Tab (separate session)     sessionStorage
-  │                               │
-  ├─ Open new tab               (empty)
-  │ ↓ (No sessionStorage) 
-  │                               │
-  ├─ Show Join Screen            │
-  ├─ User enters "Bob"           │
-  │ (NOT Alice from Tab 1)        │
-```
-
-### 6. User Leaves Room
+### 5. User Leaves Room
 
 ```
 Browser                Backend              MQTT              MongoDB
   │                      │                  │                   │
   ├─ POST /leave ───────>│                  │                   │
   │ (username)           │                  │                   │
-  │                      ├─ Delete user ────────────────────────>│
+  │                      ├─ Delete user ───────────────────────>│
   │                      │ (users collection)                   │
   │                      ├─ Decrement userCount ───────────────>│
   │                      │                  │                   │
-  │                      ├─ Publish leave ──>│                   │
+  │                      ├─ Publish leave ─>│                   │
   │                      │ event            ├─ Broadcast ──────>│
   │                      │                  │ (other clients)   │
   │<─ 200 OK ────────────┤                  │                   │
   │ → Clear sessionStorage                  │                   │
   │ → Disconnect MQTT    │                  │                   │
-```
-
-### 7. Heartbeat (Periodic TTL Refresh)
-
-```
-Browser (ChatRoom)       Backend              MongoDB
-  │                         │                   │
-  │ (Every 4 minutes)       │                   │
-  ├─ POST /join ───────────>│                   │
-  │ (same username/room)    │                   │
-  │                         ├─ Find user ──────>│
-  │                         ├─ Refresh TTL ────>│
-  │                         │ (expiresAt += 30m)│
-  │<─ 200 OK ───────────────┤                   │
-  │                         │                   │
 ```
 
 ## Communication Protocols
