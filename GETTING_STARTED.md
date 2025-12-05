@@ -10,9 +10,9 @@ Before you begin, make sure you have the following installed:
 ## Installation & Quick Start
 
 ### Manual Docker Compose
+Change to your project directory and run this command
 
 ```bash
-cd /home/athonk/FinalProject
 docker-compose up --build
 ```
 
@@ -61,51 +61,6 @@ docker-compose down
 ```bash
 docker-compose down -v
 ```
-
-## Viewing Logs
-
-To see what's happening in your services:
-
-```bash
-# View all service logs
-docker-compose logs
-
-# View logs for specific service
-docker-compose logs backend
-docker-compose logs frontend
-docker-compose logs mosquitto
-docker-compose logs mongodb
-
-# Follow logs in real-time
-docker-compose logs -f
-```
-
-## Troubleshooting
-
-### Problem: "Cannot connect to Docker daemon"
-**Solution**: Make sure Docker Desktop is running. Start Docker and try again.
-
-### Problem: "Port 3001 is already in use"
-**Solution**: Either:
-- Stop the service using that port: `docker-compose down`
-- Or modify the port in `docker-compose.yml` and change `3001:3000` to `3002:3000`
-
-### Problem: "Cannot reach backend from frontend"
-**Solution**: 
-- Check that all containers are running: `docker-compose ps`
-- Verify backend logs: `docker-compose logs backend`
-- Ensure there are no firewall issues
-
-### Problem: "Messages not persisting"
-**Solution**: 
-- Check MongoDB is running: `docker-compose ps`
-- Ensure MongoDB volume isn't corrupted: `docker-compose down -v && docker-compose up`
-
-### Problem: "Cannot connect from other computer"
-**Solution**:
-- Verify your computer's firewall isn't blocking port 3001
-- Check your local IP address is correct
-- Ensure both computers are on the same network
 
 ## File Structure Overview
 
@@ -161,52 +116,4 @@ FinalProject/
 - Click the "Leave" button in the top-right
 - Or simply close the browser tab
 - You'll automatically disconnect
-
-## Advanced: Local Development (Without Docker)
-
-If you want to develop without Docker:
-
-### Backend Setup:
-```bash
-cd backend
-npm install
-export MONGO_URL=mongodb://admin:password@localhost:27017
-export MQTT_BROKER_URL=mqtt://localhost:1883
-npm run dev
-```
-
-### Frontend Setup:
-```bash
-cd frontend
-npm install
-export REACT_APP_BACKEND_URL=http://localhost:3000
-export REACT_APP_MQTT_BROKER_URL=ws://localhost:9001
-npm start
-```
-
-You'll need to have MongoDB and Mosquitto running separately.
-
-## Performance Tips
-
-- **First load may be slow** - React compilation on first start takes time
-- **Keep chat history reasonable** - Displaying 100 messages works well
-- **Close unused rooms** - Helps reduce memory usage
-- **Limit concurrent users** - Works great with 10-50 users per room
-
-## Next Steps
-
-1. ✅ Start the application with `setup.sh` or `setup.bat`
-2. 🧪 Test with multiple browser tabs or computers
-3. 💬 Create different rooms and test messaging
-4. 🚀 Invite others to join from the network
-
-## Support & Issues
-
-If you encounter issues:
-
-1. Check the logs: `docker-compose logs`
-2. Verify all containers are running: `docker-compose ps`
-3. Try restarting: `docker-compose down && docker-compose up --build`
-4. Review the main README.md for more detailed information
-
-Enjoy chatting! 🎉
+---

@@ -29,13 +29,10 @@ The system consists of 4 main services:
 ## Quick Start with Docker
 
 1. **Clone the repository**
-   ```bash
-   cd /home/athonk/FinalProject
-   ```
 
 2. **Build and start all services**
    ```bash
-   docker-compose up --build
+   docker compose up --build
    ```
 
 3. **Access the application**
@@ -56,26 +53,28 @@ The system consists of 4 main services:
 
 ```
 FinalProject/
-├── backend/                 # Node.js backend server
-│   ├── server.js           # Main Express server
-│   ├── package.json        # Dependencies
-│   └── Dockerfile          # Backend container
-├── frontend/               # React frontend application
+├── backend/                  # Node.js backend server
+│   ├── server.js             # Main Express server
+│   ├── package.json          # Dependencies
+│   └── Dockerfile            # Backend container
+├── frontend/                 # React frontend application
 │   ├── src/
-│   │   ├── components/     # React components
+│   │   ├── components/       # React components
 │   │   │   ├── JoinScreen.js
 │   │   │   ├── ChatRoom.js
-│   │   │   └── *.css       # Component styles
-│   │   ├── App.js          # Main app component
-│   │   └── index.js        # React entry point
-│   ├── package.json        # Dependencies
+│   │   │   └── *.css         # Component styles
+│   │   ├── App.js            # Main app component
+│   │   └── index.js          # React entry point
+│   ├── package.json          # Dependencies
 │   ├── public/
-│   │   └── index.html      # HTML template
-│   └── Dockerfile          # Frontend container
-├── mosquitto/              # MQTT Broker configuration
-│   └── config.conf         # Mosquitto config
-└── docker-compose.yml      # Docker Compose configuration
+│   │   └── index.html        # HTML template
+│   └── Dockerfile            # Frontend container
+├── mosquitto/                # MQTT Broker configuration
+│   └── config.conf           # Mosquitto config
+└── docker-compose.yml        # Docker Compose configuration
 ```
+
+To see more about the system's structure and how it works [click here](ARCHITECTURE.md)
 
 ## API Endpoints
 
@@ -115,30 +114,7 @@ GET /api/rooms/:roomName/users
 
 ## Accessing from Other Computers
 
-To access the chat from other computers on the same network:
-
-1. Find your computer's IP address:
-   ```bash
-   ifconfig  # Linux/Mac
-   ipconfig  # Windows
-   ```
-
-2. Replace `localhost` with your IP in the frontend environment variables
-3. Access from another computer: `http://<your-ip>:3001`
-
-## Troubleshooting
-
-### Connection Issues
-- Ensure all containers are running: `docker-compose ps`
-- Check logs: `docker-compose logs [service-name]`
-
-### MongoDB Connection Error
-- Ensure MongoDB container is healthy: `docker-compose logs mongodb`
-- Check credentials in docker-compose.yml
-
-### MQTT Connection Error
-- Verify Mosquitto container is running: `docker ps | grep mqtt`
-- Check WebSocket port 9001 is accessible
+To access the chat from other device on the same network click [this link](WSL_PORT_FORWARDING.md)
 
 ## Future Enhancements
 
@@ -154,4 +130,5 @@ To access the chat from other computers on the same network:
 ## License
 
 MIT License - feel free to use this project for your own purposes.
-.
+
+
