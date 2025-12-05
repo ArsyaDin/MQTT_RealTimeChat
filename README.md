@@ -53,25 +53,32 @@ The system consists of 4 main services:
 
 ```
 FinalProject/
-├── backend/                  # Node.js backend server
-│   ├── server.js             # Main Express server
-│   ├── package.json          # Dependencies
-│   └── Dockerfile            # Backend container
-├── frontend/                 # React frontend application
+├── backend/                          # Node.js backend server
+│   ├── server.js                     # Main Express server with REST API & MQTT
+│   ├── package.json                  # Dependencies
+│   ├── Dockerfile                    # Backend container
+│   └── .env.example                  # Environment variables template
+│
+├── frontend/                         # React frontend application
 │   ├── src/
-│   │   ├── components/       # React components
-│   │   │   ├── JoinScreen.js
-│   │   │   ├── ChatRoom.js
-│   │   │   └── *.css         # Component styles
-│   │   ├── App.js            # Main app component
-│   │   └── index.js          # React entry point
-│   ├── package.json          # Dependencies
+│   │   ├── components/
+│   │   │   ├── JoinScreen.js         # Login/room selection screen
+│   │   │   ├── RoomBrowser.js        # Room discovery & browsing
+│   │   │   ├── ChatRoom.js           # Main chat interface with MQTT
+│   │   │   ├── JoinScreen.css        # Join screen styles
+│   │   │   ├── RoomBrowser.css       # Room browser styles
+│   │   │   └── ChatRoom.css          # Chat room styles
+│   │   ├── App.js                    # Main app component with session management
+│   │   ├── App.css                   # App styles
+│   │   └── index.js                  # React entry point
 │   ├── public/
-│   │   └── index.html        # HTML template
-│   └── Dockerfile            # Frontend container
-├── mosquitto/                # MQTT Broker configuration
-│   └── config.conf           # Mosquitto config
-└── docker-compose.yml        # Docker Compose configuration
+│   │   └── index.html                # HTML template
+│   ├── package.json                  # Dependencies
+│   ├── Dockerfile                    # Frontend container
+│   └── .env.example                  # Environment variables template
+│
+├── mosquitto/                        # MQTT Broker configuration
+    └── config.conf                   # Mosquitto configuration
 ```
 
 To see more about the system's structure and how it works [click here](ARCHITECTURE.md)
