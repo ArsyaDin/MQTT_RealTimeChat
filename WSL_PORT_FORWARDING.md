@@ -39,71 +39,21 @@ You should see 4 rules listed.
 
 ---
 
-## Step 3: Get Your Windows IP
+## Step 5: Get Your Windows IP
 
 ```powershell
 ipconfig
 ```
 
-Look for "IPv4 Address" - usually something like `192.168.1.100` or `10.200.51.194`
+Look for "IPv4 Address" - usually something like `192.xxx.xxx.xxx` or `10.xxx.xxx.xxx`
 
 ---
 
-## Step 4: Test from Mobile
+## Step 6: Test from other device
 
-On your mobile phone browser:
+On your other device's browser:
 ```
-http://192.168.1.100:3001
-```
-(Replace with your actual Windows IP)
-
----
-
-## Troubleshooting
-
-### Rules not working?
-
-**Clear existing rules first:**
-```powershell
-netsh interface portproxy reset
-```
-
-Then re-add the rules.
-
-### Port already in use?
-
-```powershell
-netstat -ano | findstr ":3001\|:3000\|:9001\|:1883"
-```
-
-If you see a process using the port, you may need to stop it or use a different port.
-
-### Still can't connect?
-
-1. Verify containers are running:
-   ```bash
-   docker ps
-   ```
-
-2. Check firewall allows the ports (Windows Defender)
-
-3. Ensure mobile is on same network as Windows
-
-4. Try connecting from Windows first:
-   ```
-   http://localhost:3001
-   ```
-
----
-
-## Removing Port Forwarding (If Needed)
-
-```powershell
-# Remove all port forwarding rules
-netsh interface portproxy reset
-
-# Or remove specific port
-netsh interface portproxy delete v4tov4 listenport=3001 listenaddress=0.0.0.0
+http://<your actual Windows IP>
 ```
 
 ---
@@ -111,7 +61,7 @@ netsh interface portproxy delete v4tov4 listenport=3001 listenaddress=0.0.0.0
 ## How It Works
 
 ```
-Mobile Phone (WiFi)
+Other Device (WiFi)
     ↓
 Windows Router (IP: 192.168.1.100 or 10.200.51.194)
     ↓
