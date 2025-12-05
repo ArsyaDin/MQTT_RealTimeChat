@@ -210,21 +210,31 @@ app.post('/api/rooms/:roomName/join', async (req, res) => {
       console.log(`✓ Created new room: ${roomNameLower}`);
     }
 
-    // Add user to room
-    const user = new User({
-      roomName: roomNameLower,
-      username,
-      joinedAt: new Date()
-    });
-    await user.save();
+    // Add or refresh user in room (idempotent)
+    const existingUser = await User.findOne({ roomName: roomNameLower, username });
+    if (existingUser) {
+      // Update joinedAt and expiresAt so refreshes keep user active
+      existingUser.joinedAt = new Date();
+      existingUser.expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+      await existingUser.save();
+      console.log(`↻ Refreshed existing user in room: ${username} @ ${roomNameLower}`);
+    } else {
+      const user = new User({
+        roomName: roomNameLower,
+        username,
+        joinedAt: new Date(),
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000)
+      });
+      await user.save();
 
-    // Increment room user count
-    await Room.updateOne(
-      { name: roomNameLower },
-      { $inc: { userCount: 1 } }
-    );
+      // Increment room user count only for new user
+      await Room.updateOne(
+        { name: roomNameLower },
+        { $inc: { userCount: 1 } }
+      );
+    }
 
-    // Publish user join event to MQTT
+    // Publish user join event to MQTT (announce on first join)
     const joinEvent = {
       username,
       timestamp: new Date().toISOString(),
@@ -232,7 +242,8 @@ app.post('/api/rooms/:roomName/join', async (req, res) => {
     };
     mqttClient.publish(`chat/${roomNameLower}/users/join`, JSON.stringify(joinEvent));
 
-    res.json({ success: true, message: 'Joined room', userId: user._id, room });
+    // Return room and success
+    res.json({ success: true, message: 'Joined room', room });
   } catch (error) {
     console.error('Error joining room:', error);
     res.status(500).json({ error: 'Failed to join room' });
