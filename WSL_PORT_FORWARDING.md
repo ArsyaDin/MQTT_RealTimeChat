@@ -63,7 +63,7 @@ http://<your actual Windows IP>
 ```
 Other Device (WiFi)
     ↓
-Windows Router (IP: 192.168.1.100 or 10.200.51.194)
+Windows Router
     ↓
 Port Forwarding (netsh portproxy)
     ↓
