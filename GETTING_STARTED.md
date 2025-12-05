@@ -32,21 +32,6 @@ When you run the setup, you'll get:
 3. **Enter a room name** (e.g., "general", "friends", "project")
 4. **Click "Join Room"** to start chatting
 
-### Multiple Users on Same Network
-
-To access the chat from another computer on your local network:
-
-1. Find your computer's IP address:
-   - **Windows**: Open Command Prompt and type `ipconfig`
-   - **Mac/Linux**: Open Terminal and type `ifconfig`
-   - Look for IPv4 Address (e.g., 192.168.1.100)
-
-2. From the other computer, open browser and go to:
-   ```
-   http://<your-ip>:3001
-   ```
-   For example: `http://192.168.1.100:3001`
-
 ## Stopping the Services
 
 ### Graceful Shutdown:
@@ -62,33 +47,6 @@ docker-compose down
 docker-compose down -v
 ```
 
-## File Structure Overview
-
-```
-FinalProject/
-├── backend/                    # Node.js backend
-│   ├── server.js              # Main server code
-│   ├── package.json           # Dependencies
-│   ├── Dockerfile             # Container instructions
-│   └── .env.example           # Environment template
-│
-├── frontend/                  # React frontend
-│   ├── src/
-│   │   ├── components/        # Chat components
-│   │   ├── App.js            # Main component
-│   │   └── index.js          # Entry point
-│   ├── package.json          # Dependencies
-│   ├── Dockerfile            # Container instructions
-│   └── .env.example          # Environment template
-│
-├── mosquitto/
-│   └── config.conf           # MQTT broker configuration
-│
-├── docker-compose.yml        # Multi-container setup
-├── README.md                 # Full documentation
-├── setup.sh                  # Linux/Mac setup script
-└── setup.bat                 # Windows setup script
-```
 
 ## Using the Chat Application
 
