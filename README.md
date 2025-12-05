@@ -40,6 +40,8 @@ The system consists of 4 main services:
    - Backend API: http://localhost:3000
    - MQTT Broker: localhost:1883 (or ws://localhost:9001 for WebSocket)
 
+### For more detailed information, access [this link](GETTING_STARTED.md) 
+
 
 ## Technology Stack
 
