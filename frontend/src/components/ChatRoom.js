@@ -92,9 +92,16 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
         if (topic === `chat/${roomName}/messages`) {
           setMessages((prev) => [...prev, data]);
         } else if (topic === `chat/${roomName}/users/join`) {
-          setUsers((prev) => [...new Set([...prev, data.username])]);
+          // keep users as objects { username, joinedAt }
+          setUsers((prev) => {
+            const exists = prev.find((u) => u.username === data.username);
+            if (exists) {
+              return prev.map((u) => (u.username === data.username ? { ...u, joinedAt: data.timestamp || new Date().toISOString() } : u));
+            }
+            return [...prev, { username: data.username, joinedAt: data.timestamp || new Date().toISOString() }];
+          });
         } else if (topic === `chat/${roomName}/users/leave`) {
-          setUsers((prev) => prev.filter((u) => u !== data.username));
+          setUsers((prev) => prev.filter((u) => u.username !== data.username));
         }
       } catch (err) {
         console.error('Error processing message:', err);
@@ -149,6 +156,7 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
       if (mqttClientRef.current) {
         mqttClientRef.current.end();
       }
+      try { sessionStorage.removeItem('chat_session'); } catch (e) { /* ignore */ }
       onLeave();
     } catch (err) {
       console.error('Error leaving room:', err);
@@ -166,11 +174,26 @@ const ChatRoom = ({ username, roomName, onLeave }) => {
     }
   };
 
-  // Handle page close/unload
+  // Don't auto-leave on page refresh/unload. Instead rely on server TTL and
+  // periodic heartbeat to keep the user's presence alive. Cleanup happens on explicit Leave.
+  
+  // Heartbeat: refresh join every 4 minutes so server TTL is extended
   useEffect(() => {
-    window.addEventListener('beforeunload', handleWindowClose);
+    let intervalId = null;
+    const startHeartbeat = async () => {
+      try {
+        await axios.post(`${window.location.origin}/api/rooms/${roomName}/join`, { username });
+      } catch (err) {
+        console.warn('Heartbeat failed:', err);
+      }
+    };
+
+    // Start immediately and then repeat
+    startHeartbeat();
+    intervalId = setInterval(startHeartbeat, 4 * 60 * 1000);
+
     return () => {
-      window.removeEventListener('beforeunload', handleWindowClose);
+      if (intervalId) clearInterval(intervalId);
     };
   }, [roomName, username]);
 

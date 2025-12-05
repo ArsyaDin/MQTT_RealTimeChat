@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import RoomBrowser from './RoomBrowser';
 import './JoinScreen.css';
@@ -9,6 +9,19 @@ const JoinScreen = ({ onJoin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showBrowser, setShowBrowser] = useState(false);
+
+  // Prefill username/room from per-tab session (sessionStorage) if present
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('chat_session');
+      if (!raw) return;
+      const session = JSON.parse(raw);
+      if (session.username) setUsername(session.username);
+      if (session.roomName) setRoomName(session.roomName);
+    } catch (e) {
+      // ignore
+    }
+  }, []);
 
   const handleJoin = async (e, selectedRoom = null) => {
     e.preventDefault();
@@ -29,6 +42,13 @@ const JoinScreen = ({ onJoin }) => {
       );
 
       if (response.data.success) {
+        // Persist session so refresh will auto-rejoin
+        try {
+          // Store session per-tab so opening a new tab does not impersonate this user
+          sessionStorage.setItem('chat_session', JSON.stringify({ username, roomName: finalRoom }));
+        } catch (e) {
+          console.warn('Failed to write session to sessionStorage', e);
+        }
         onJoin({ username, roomName: finalRoom });
       }
     } catch (err) {
